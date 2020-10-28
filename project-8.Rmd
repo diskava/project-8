@@ -1,0 +1,89 @@
+---
+title: "Practicle Machine Learning Project"
+author: "Mwenge Mulenga"
+date: "10/28/2020"
+output: html_document
+---
+Task description
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+
+
+Preloading packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(knitr)
+library(randomForest)
+library(RColorBrewer)
+```
+
+
+
+Downloading and loading the data
+```{r}
+train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+orig_training <- read.csv(url(train_url),sep = ",", na.strings = c("", "NA"))
+orig_testing <- read.csv(url(test_url),sep = ",", na.strings = c("", "NA"))
+```
+Testing the files for my start point.
+```{r}
+dim(orig_training)
+dim(orig_testing)
+```
+
+Analysis of variables that have too many NA values
+```{r}
+training.nonNAs <- orig_training[ , colSums(is.na(orig_training)) == 0]
+dim(training.nonNAs)
+```
+
+Cleaning the data
+
+```{r}
+clean_training<-training.nonNAs[,-c(1:8)]
+dim(clean_training)
+clean_testing<-orig_testing[,names(clean_training[,-52])]
+dim(clean_testing)
+```
+
+Splitting the data into a 75%  training set and a 25% test set.
+```{r}
+inTrain<-createDataPartition(y=clean_training$classe, p=0.75,list=F)
+training<-clean_training[inTrain,] 
+test<-clean_training[-inTrain,]
+dim(training)
+```
+
+Cross validation using a random forest done at 5 fold.This achieves 95% CI(0.9906,0.9954),Accuracy 99% and a kappa value of 0.992
+
+```{r}
+Modfit1<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+rf_fit<-train(classe~.,data=training, method="rf", trControl=Modfit1, verbose=F)
+pred.rf<-predict(rf_fit, newdata=test)
+confusionMatrix(pred.rf, test$classe)
+pred.20<-predict(rf_fit, newdata=clean_testing)
+pred.20
+```
+
+Plotting with rpart plot
+```{r}
+set.seed(1234)
+model_fit2 <- rpart(classe ~ ., data=clean_training, method="class")
+print(model_fit2)
+fancyRpartPlot(model_fit2, digits=2)
+```
+
+Predicting on the test data
+
+result <-predict(rf_fit,clean_testing[ , -length(names(clean_testing))])
+
+
+
+The random forest algorithm has the best performance.Overplotting could have cuased The performance of rpart plot lower
